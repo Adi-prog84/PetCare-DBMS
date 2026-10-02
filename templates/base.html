@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}PetCare+ — Smart Pet Clinic Management System{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22><text y=%2222%22 font-size=%2222%22>🐾</text></svg>">
+</head>
+<body>
+    <div class="app-wrapper">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="brand-icon">🐾</div>
+                <div class="brand-text">
+                    <h2>PetCare+</h2>
+                    <span>DBMS Clinic System</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">Core Operations</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <span class="icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                
+                {% if current_user.role in ['Admin', 'Receptionist'] %}
+                <a href="{{ url_for('owners') }}" class="nav-item {% if request.endpoint == 'owners' %}active{% endif %}">
+                    <span class="icon">👥</span>
+                    <span>Pet Owners</span>
+                </a>
+                {% endif %}
+
+                <a href="{{ url_for('pets') }}" class="nav-item {% if request.endpoint in ['pets', 'pet_detail'] %}active{% endif %}">
+                    <span class="icon">🐶</span>
+                    <span>Pets & Patients</span>
+                </a>
+
+                <a href="{{ url_for('veterinarians') }}" class="nav-item {% if request.endpoint == 'veterinarians' %}active{% endif %}">
+                    <span class="icon">🩺</span>
+                    <span>Veterinarians</span>
+                </a>
+
+                <a href="{{ url_for('appointments') }}" class="nav-item {% if request.endpoint == 'appointments' %}active{% endif %}">
+                    <span class="icon">📅</span>
+                    <span>Appointments</span>
+                </a>
+
+                <div class="nav-section-title">Clinical & Medical</div>
+                <a href="{{ url_for('treatments') }}" class="nav-item {% if request.endpoint == 'treatments' %}active{% endif %}">
+                    <span class="icon">📋</span>
+                    <span>Treatments</span>
+                </a>
+
+                <a href="{{ url_for('vaccinations') }}" class="nav-item {% if request.endpoint == 'vaccinations' %}active{% endif %}">
+                    <span class="icon">💉</span>
+                    <span>Vaccinations</span>
+                </a>
+
+                <a href="{{ url_for('prescriptions') }}" class="nav-item {% if request.endpoint == 'prescriptions' %}active{% endif %}">
+                    <span class="icon">💊</span>
+                    <span>Prescriptions</span>
+                </a>
+
+                <div class="nav-section-title">Finance & Analytics</div>
+                <a href="{{ url_for('billing') }}" class="nav-item {% if request.endpoint == 'billing' %}active{% endif %}">
+                    <span class="icon">💳</span>
+                    <span>Billing & Invoices</span>
+                </a>
+
+                <a href="{{ url_for('reports') }}" class="nav-item {% if request.endpoint == 'reports' %}active{% endif %}">
+                    <span class="icon">📈</span>
+                    <span>DBMS Reports</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-mini">
+                    <span class="user-name">{{ current_user.full_name or current_user.username }}</span>
+                    <span class="user-role-badge">{{ current_user.role }}</span>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-btn" title="Sign Out">🚪</a>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="top-navbar">
+                <div class="page-title">
+                    <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+                </div>
+                <div class="top-actions">
+                    <span style="font-size: 0.85rem; color: #64748b; font-weight: 500;">
+                        📅 Today: <strong>{{ today_date }}</strong>
+                    </span>
+                    {% block header_actions %}{% endblock %}
+                </div>
+            </header>
+
+            <div class="content-body">
+                <!-- Flash Notification Messages -->
+                <div class="flash-container">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">
+                                    <span>{{ message }}</span>
+                                    <button type="button" class="alert-close">&times;</button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                </div>
+
+                <!-- Page Content -->
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Application Script -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

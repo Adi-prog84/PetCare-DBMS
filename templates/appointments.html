@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}Appointments — PetCare+{% endblock %}
+{% block page_title %}Clinic Appointments & Visits{% endblock %}
+
+{% block header_actions %}
+{% if current_user.role in ['Admin', 'Receptionist'] %}
+<button type="button" class="btn btn-primary btn-sm" data-modal-open="bookApptModal">
+    + Book New Appointment
+</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- Search and Filter Bar -->
+<div class="filter-bar">
+    <form action="{{ url_for('appointments') }}" method="GET" class="filter-group">
+        <input type="text" name="search" class="search-input" placeholder="Search pet, owner, or reason..." value="{{ search }}">
+        
+        <input type="date" name="date" class="form-control" style="width: auto;" value="{{ date_filter }}" title="Filter by date">
+
+        <select name="status" class="select-filter" onchange="this.form.submit()">
+            <option value="">All Statuses</option>
+            <option value="Scheduled" {% if status_filter == 'Scheduled' %}selected{% endif %}>Scheduled</option>
+            <option value="Completed" {% if status_filter == 'Completed' %}selected{% endif %}>Completed</option>
+            <option value="Cancelled" {% if status_filter == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+        </select>
+
+        <select name="vet_id" class="select-filter" onchange="this.form.submit()">
+            <option value="">All Doctors</option>
+            {% for v in vets %}
+                <option value="{{ v.vet_id }}" {% if vet_filter == v.vet_id|string %}selected{% endif %}>
+                    {{ v.name }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+        {% if search or date_filter or status_filter or vet_filter %}
+            <a href="{{ url_for('appointments') }}" class="btn btn-secondary btn-sm">Clear</a>
+        {% endif %}
+    </form>
+    <div>
+        <span style="font-size: 0.85rem; color: #64748b;">Showing: <strong>{{ appointments|length }} Bookings</strong></span>
+    </div>
+</div>
+
+<!-- Appointments Table Card -->
+<div class="card">
+    <div class="card-body" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Date & Time</th>
+                        <th>Pet Patient</th>
+                        <th>Owner Info</th>
+                        <th>Doctor Assigned</th>
+                        <th>Visit Reason</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if appointments %}
+                        {% for a in appointments %}
+                        <tr>
+                            <td>#{{ a.appointment_id }}</td>
+                            <td>
+                                <strong>{{ a.appointment_date }}</strong><br>
+                                <span style="color: #64748b; font-size: 0.8rem;">🕒 {{ a.appointment_time }}</span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('pet_detail', pet_id=a.pet_id) }}" style="color: var(--primary); text-decoration: none; font-weight: 600;">
+                                    🐾 {{ a.pet_name }}
+                                </a>
+                                <br><small style="color: #64748b;">{{ a.species }}</small>
+                            </td>
+                            <td>
+                                {{ a.owner_name }}<br>
+                                <small style="color: #64748b;">📞 {{ a.owner_phone }}</small>
+                            </td>
+                            <td>
+                                {{ a.vet_name }}<br>
+                                <small style="color: #64748b;">{{ a.specialization }}</small>
+                            </td>
+                            <td>{{ a.reason }}</td>
+                            <td>
+                                <span class="badge badge-{{ a.status|lower }}">{{ a.status }}</span>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <!-- Status quick toggles -->
+                                    <form action="{{ url_for('change_appointment_status', appointment_id=a.appointment_id) }}" method="POST" style="display:inline;">
+                                        <select name="status" onchange="this.form.submit()" style="font-size: 0.76rem; padding: 3px 6px; border-radius: 4px; border: 1px solid var(--border);">
+                                            <option value="Scheduled" {% if a.status == 'Scheduled' %}selected{% endif %}>Scheduled</option>
+                                            <option value="Completed" {% if a.status == 'Completed' %}selected{% endif %}>Completed</option>
+                                            <option value="Cancelled" {% if a.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                                        </select>
+                                    </form>
+
+                                    <!-- If completed & no treatment, show button to record treatment -->
+                                    {% if a.status == 'Completed' and not a.treatment_id and current_user.role in ['Admin', 'Veterinarian'] %}
+                                    <a href="{{ url_for('treatments') }}" class="btn btn-primary btn-sm" title="Add Diagnosis & Treatment">
+                                        + Treat
+                                    </a>
+                                    {% endif %}
+
+                                    {% if current_user.role in ['Admin', 'Receptionist'] %}
+                                    <button type="button" class="btn btn-secondary btn-sm" data-modal-open="editApptModal{{ a.appointment_id }}">
+                                        Edit
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Edit Appointment Modal -->
+                        <div class="modal-backdrop" id="editApptModal{{ a.appointment_id }}">
+                            <div class="modal-dialog">
+                                <div class="modal-header">
+                                    <h3>Edit Appointment #{{ a.appointment_id }}</h3>
+                                    <button type="button" class="modal-close">&times;</button>
+                                </div>
+                                <form action="{{ url_for('edit_appointment', appointment_id=a.appointment_id) }}" method="POST">
+                                    <div class="modal-body">
+                                        <div class="form-group">
+                                            <label>Select Pet *</label>
+                                            <select name="pet_id" class="form-control" required>
+                                                {% for p in pets %}
+                                                    <option value="{{ p.pet_id }}" {% if p.pet_id == a.pet_id %}selected{% endif %}>
+                                                        {{ p.pet_name }} ({{ p.species }}) — Owner: {{ p.owner_name }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Attending Veterinarian *</label>
+                                            <select name="vet_id" class="form-control" required>
+                                                {% for v in vets %}
+                                                    <option value="{{ v.vet_id }}" {% if v.vet_id == a.vet_id %}selected{% endif %}>
+                                                        {{ v.name }} ({{ v.specialization }})
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Date *</label>
+                                                <input type="date" name="appointment_date" class="form-control" value="{{ a.appointment_date }}" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Time *</label>
+                                                <input type="time" name="appointment_time" class="form-control" value="{{ a.appointment_time }}" required>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Status</label>
+                                            <select name="status" class="form-control">
+                                                <option value="Scheduled" {% if a.status == 'Scheduled' %}selected{% endif %}>Scheduled</option>
+                                                <option value="Completed" {% if a.status == 'Completed' %}selected{% endif %}>Completed</option>
+                                                <option value="Cancelled" {% if a.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Reason for Visit *</label>
+                                            <textarea name="reason" class="form-control" rows="2" required>{{ a.reason }}</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Update Booking</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: #64748b; padding: 28px;">
+                                No appointments found.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Book Appointment Modal -->
+<div class="modal-backdrop" id="bookApptModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3>Book New Appointment</h3>
+            <button type="button" class="modal-close">&times;</button>
+        </div>
+        <form action="{{ url_for('book_appointment') }}" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Select Pet Patient *</label>
+                    <select name="pet_id" class="form-control" required>
+                        <option value="">-- Choose Pet --</option>
+                        {% for p in pets %}
+                            <option value="{{ p.pet_id }}">
+                                {{ p.pet_name }} ({{ p.species }}) — Owner: {{ p.owner_name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Select Veterinarian *</label>
+                    <select name="vet_id" class="form-control" required>
+                        <option value="">-- Choose Doctor --</option>
+                        {% for v in vets %}
+                            <option value="{{ v.vet_id }}">
+                                {{ v.name }} — {{ v.specialization }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Appointment Date *</label>
+                        <input type="date" name="appointment_date" class="form-control" value="{{ today_date }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Appointment Time *</label>
+                        <input type="time" name="appointment_time" class="form-control" value="10:00" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Reason for Visit / Symptoms *</label>
+                    <textarea name="reason" class="form-control" rows="2" placeholder="e.g. Annual vaccination, limping on right paw, vomiting" required></textarea>
+                </div>
+                <p style="font-size: 0.74rem; color: #64748b;">
+                    🛡️ <em>DBMS Safety: The system automatically verifies that the selected doctor does not have any double-booking collisions at this date and time.</em>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                <button type="submit" class="btn btn-primary">Confirm Booking</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}DBMS Reports & Analytics — PetCare+{% endblock %}
+{% block page_title %}Clinic Analytics & DBMS SQL Reports{% endblock %}
+
+{% block content %}
+<p style="color: #64748b; font-size: 0.9rem; margin-bottom: 24px;">
+    💡 <em>All statistics below are computed via optimized MySQL queries utilizing <code>GROUP BY</code>, <code>HAVING</code>, aggregate functions (<code>SUM</code>, <code>COUNT</code>, <code>AVG</code>), multi-table <code>JOIN</code>s, and Database Views.</em>
+</p>
+
+<!-- Top Grid: Species Breakdown & Appointment Status -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+    <!-- Report 1: Pets by Species -->
+    <div class="card">
+        <div class="card-header">
+            <h3>🐾 Pets by Species</h3>
+            <span class="badge" style="background:#f1f5f9; color:#475569;">SQL: GROUP BY species</span>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Species</th>
+                        <th>Total Registered</th>
+                        <th>Average Weight</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in species_report %}
+                    <tr>
+                        <td><strong>{{ s.species }}</strong></td>
+                        <td>{{ s.pet_count }} pets</td>
+                        <td>{{ s.avg_weight or 'N/A' }} kg</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Report 6: Appointment Status Breakdown -->
+    <div class="card">
+        <div class="card-header">
+            <h3>📊 Appointments by Status</h3>
+            <span class="badge" style="background:#f1f5f9; color:#475569;">SQL: GROUP BY status</span>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Total Appointments</th>
+                        <th>Badge</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for st in status_report %}
+                    <tr>
+                        <td><strong>{{ st.status }}</strong></td>
+                        <td>{{ st.count }} appointments</td>
+                        <td>
+                            <span class="badge badge-{{ st.status|lower }}">{{ st.status }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Report 2: Appointments & Revenue by Veterinarian -->
+<div class="card">
+    <div class="card-header">
+        <h3>🩺 Performance & Revenue by Veterinarian</h3>
+        <span class="badge" style="background:#f1f5f9; color:#475569;">SQL: JOIN + GROUP BY vet_id</span>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Doctor Name</th>
+                    <th>Clinical Specialization</th>
+                    <th>Total Bookings</th>
+                    <th>Completed Visits</th>
+                    <th>Total Revenue Realized</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in vet_report %}
+                <tr>
+                    <td><strong>{{ v.vet_name }}</strong></td>
+                    <td>{{ v.specialization }}</td>
+                    <td>{{ v.total_appointments }} visits</td>
+                    <td>{{ v.completed_appointments }} completed</td>
+                    <td><strong style="color: #0d9488;">₹{{ "%.2f"|format(v.total_revenue) }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Report 3: Monthly Realized Revenue Trends -->
+<div class="card">
+    <div class="card-header">
+        <h3>💰 Monthly Realized Revenue Trends</h3>
+        <span class="badge" style="background:#f1f5f9; color:#475569;">SQL: DATE_FORMAT + SUM(total_amount)</span>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Billing Month</th>
+                    <th>Paid Invoices</th>
+                    <th>Gross Income Collected</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if monthly_revenue %}
+                    {% for m in monthly_revenue %}
+                    <tr>
+                        <td><strong>{{ m.month_label }}</strong></td>
+                        <td>{{ m.paid_bills_count }} invoices</td>
+                        <td><strong style="color: #059669;">₹{{ "%.2f"|format(m.revenue_amount) }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="3" style="text-align: center; color: #64748b; padding: 18px;">
+                            No paid invoices recorded yet.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Report 4: Outstanding & Unpaid Bills -->
+<div class="card">
+    <div class="card-header">
+        <h3>⚠️ Outstanding / Unpaid Invoices</h3>
+        <span class="badge" style="background:#fee2e2; color:#991b1b;">SQL: WHERE payment_status = 'Unpaid'</span>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Bill ID</th>
+                    <th>Appt Date</th>
+                    <th>Pet Patient</th>
+                    <th>Owner Name</th>
+                    <th>Contact Phone</th>
+                    <th>Outstanding Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if unpaid_bills %}
+                    {% for b in unpaid_bills %}
+                    <tr>
+                        <td>#INV-{{ b.bill_id }}</td>
+                        <td>{{ b.appointment_date }}</td>
+                        <td><strong>{{ b.pet_name }}</strong></td>
+                        <td>{{ b.owner_name }}</td>
+                        <td>{{ b.owner_phone }}</td>
+                        <td><strong style="color: #dc2626;">₹{{ "%.2f"|format(b.total_amount) }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #64748b; padding: 18px;">
+                            No unpaid bills! All invoices are fully settled.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Report 5: Upcoming Vaccinations (Via View) -->
+<div class="card">
+    <div class="card-header">
+        <h3>💉 Upcoming Vaccinations (Next 30 Days)</h3>
+        <span class="badge" style="background:#ccfbf1; color:#0f766e;">SQL View: view_upcoming_vaccinations</span>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Vaccine Name</th>
+                    <th>Pet Name</th>
+                    <th>Species</th>
+                    <th>Owner Name</th>
+                    <th>Owner Phone</th>
+                    <th>Due Date</th>
+                    <th>Days Remaining</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if upcoming_vax %}
+                    {% for u in upcoming_vax %}
+                    <tr>
+                        <td><strong>{{ u.vaccine_name }}</strong></td>
+                        <td>{{ u.pet_name }}</td>
+                        <td>{{ u.species }}</td>
+                        <td>{{ u.owner_name }}</td>
+                        <td>{{ u.owner_phone }}</td>
+                        <td>{{ u.next_due_date }}</td>
+                        <td>
+                            {% if u.days_until_due < 0 %}
+                                <span class="badge badge-overdue">Overdue ({{ u.days_until_due|abs }}d)</span>
+                            {% elif u.days_until_due == 0 %}
+                                <span class="badge badge-overdue">Due Today</span>
+                            {% else %}
+                                <span class="badge badge-upcoming">In {{ u.days_until_due }} days</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: #64748b; padding: 18px;">
+                            No upcoming vaccinations due within 30 days.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

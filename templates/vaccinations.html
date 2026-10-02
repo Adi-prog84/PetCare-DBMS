@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Vaccinations — PetCare+{% endblock %}
+{% block page_title %}Preventive Care & Vaccinations{% endblock %}
+
+{% block header_actions %}
+{% if current_user.role in ['Admin', 'Veterinarian'] %}
+<button type="button" class="btn btn-primary btn-sm" data-modal-open="addVaxModal">
+    + Record Vaccination
+</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- Filter & Search Bar -->
+<div class="filter-bar">
+    <form action="{{ url_for('vaccinations') }}" method="GET" class="filter-group">
+        <input type="text" name="search" class="search-input" placeholder="Search pet, vaccine, or owner..." value="{{ search }}">
+        
+        <select name="filter" class="select-filter" onchange="this.form.submit()">
+            <option value="all" {% if filter_type == 'all' %}selected{% endif %}>All Vaccinations</option>
+            <option value="upcoming" {% if filter_type == 'upcoming' %}selected{% endif %}>Upcoming (Next 30 Days)</option>
+            <option value="overdue" {% if filter_type == 'overdue' %}selected{% endif %}>Overdue Vaccinations</option>
+        </select>
+
+        <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+        {% if search or filter_type != 'all' %}
+            <a href="{{ url_for('vaccinations') }}" class="btn btn-secondary btn-sm">Clear</a>
+        {% endif %}
+    </form>
+    <div>
+        <span style="font-size: 0.85rem; color: #64748b;">Records: <strong>{{ vaccinations|length }}</strong></span>
+    </div>
+</div>
+
+<!-- Vaccinations Table Card -->
+<div class="card">
+    <div class="card-body" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Pet & Species</th>
+                        <th>Owner Info</th>
+                        <th>Vaccine Name</th>
+                        <th>Date Given</th>
+                        <th>Next Due Date</th>
+                        <th>Status Alert</th>
+                        <th>Clinical Notes</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if vaccinations %}
+                        {% for v in vaccinations %}
+                        <tr>
+                            <td>#{{ v.vaccination_id }}</td>
+                            <td>
+                                <strong>
+                                    <a href="{{ url_for('pet_detail', pet_id=v.pet_id) }}" style="color: var(--primary); text-decoration: none;">
+                                        🐾 {{ v.pet_name }}
+                                    </a>
+                                </strong>
+                                <br><small style="color: #64748b;">{{ v.species }} ({{ v.breed }})</small>
+                            </td>
+                            <td>
+                                {{ v.owner_name }}<br>
+                                <small style="color: #64748b;">📞 {{ v.owner_phone }}</small>
+                            </td>
+                            <td><strong style="color: #0d9488;">{{ v.vaccine_name }}</strong></td>
+                            <td>{{ v.vaccination_date }}</td>
+                            <td>
+                                <strong>{{ v.next_due_date or 'N/A' }}</strong>
+                            </td>
+                            <td>
+                                {% if v.alert_status == 'OVERDUE' %}
+                                    <span class="badge badge-overdue">⚠️ Overdue ({{ v.days_difference|abs }}d)</span>
+                                {% elif v.alert_status == 'DUE TODAY' %}
+                                    <span class="badge badge-overdue">⚡ Due Today</span>
+                                {% elif v.alert_status == 'UPCOMING' %}
+                                    <span class="badge badge-upcoming">⏰ In {{ v.days_difference }}d</span>
+                                {% else %}
+                                    <span class="badge badge-completed">✅ Current</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ v.notes or '—' }}</td>
+                            <td>
+                                {% if current_user.role == 'Admin' %}
+                                <form action="{{ url_for('delete_vaccination', vaccination_id=v.vaccination_id) }}" method="POST" onsubmit="return confirmDelete('Delete this vaccination entry?');" style="display:inline;">
+                                    <button type="submit" class="btn btn-danger btn-sm">
+                                        Delete
+                                    </button>
+                                </form>
+                                {% else %}
+                                <span style="color: #94a3b8; font-size: 0.78rem;">Logged</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="9" style="text-align: center; color: #64748b; padding: 28px;">
+                                No vaccination records found.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Record Vaccination Modal -->
+{% if current_user.role in ['Admin', 'Veterinarian'] %}
+<div class="modal-backdrop" id="addVaxModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3>Record Pet Vaccination</h3>
+            <button type="button" class="modal-close">&times;</button>
+        </div>
+        <form action="{{ url_for('add_vaccination') }}" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Select Pet *</label>
+                    <select name="pet_id" class="form-control" required>
+                        <option value="">-- Choose Pet Patient --</option>
+                        {% for p in pets %}
+                            <option value="{{ p.pet_id }}">
+                                {{ p.pet_name }} ({{ p.species }}) — Owner: {{ p.owner_name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Vaccine Name *</label>
+                    <input type="text" name="vaccine_name" class="form-control" placeholder="e.g. Rabies (3-Year), DHPP Core Booster, FVRCP" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Administered Date *</label>
+                        <input type="date" name="vaccination_date" class="form-control" value="{{ today_date }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Next Due Booster Date</label>
+                        <input type="date" name="next_due_date" class="form-control">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Batch / Injection Notes</label>
+                    <textarea name="notes" class="form-control" rows="2" placeholder="e.g. Subcutaneous left shoulder, Lot #4812"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Vaccination</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

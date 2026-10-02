@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Veterinarians — PetCare+{% endblock %}
+{% block page_title %}Clinic Doctors & Specialists{% endblock %}
+
+{% block header_actions %}
+{% if current_user.role == 'Admin' %}
+<button type="button" class="btn btn-primary btn-sm" data-modal-open="addVetModal">
+    + Add New Doctor
+</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- Search Bar -->
+<div class="filter-bar">
+    <form action="{{ url_for('veterinarians') }}" method="GET" class="filter-group">
+        <input type="text" name="search" class="search-input" placeholder="Search by name, specialization, or email..." value="{{ search }}">
+        <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+        {% if search %}
+            <a href="{{ url_for('veterinarians') }}" class="btn btn-secondary btn-sm">Clear</a>
+        {% endif %}
+    </form>
+    <div>
+        <span style="font-size: 0.85rem; color: #64748b;">Medical Staff: <strong>{{ veterinarians|length }} Doctors</strong></span>
+    </div>
+</div>
+
+<!-- Veterinarians Table -->
+<div class="card">
+    <div class="card-body" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Doctor Name</th>
+                        <th>Specialization</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>Appointments Handled</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if veterinarians %}
+                        {% for v in veterinarians %}
+                        <tr>
+                            <td>#{{ v.vet_id }}</td>
+                            <td>
+                                <strong>{{ v.name }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge badge-current">{{ v.specialization }}</span>
+                            </td>
+                            <td>{{ v.phone }}</td>
+                            <td>{{ v.email }}</td>
+                            <td>
+                                <span class="badge" style="background: #e2e8f0; color: #334155;">
+                                    📅 {{ v.total_appointments }} visits
+                                </span>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    {% if current_user.role == 'Admin' %}
+                                    <button type="button" class="btn btn-secondary btn-sm" data-modal-open="editVetModal{{ v.vet_id }}">
+                                        Edit
+                                    </button>
+                                    <form action="{{ url_for('delete_veterinarian', vet_id=v.vet_id) }}" method="POST" onsubmit="return confirmDelete('Are you sure you want to remove this veterinarian? (Deletion blocked if appointments exist)');" style="display:inline;">
+                                        <button type="submit" class="btn btn-danger btn-sm">
+                                            Delete
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <span style="color: #94a3b8; font-size: 0.78rem;">Admin Only</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Edit Vet Modal -->
+                        {% if current_user.role == 'Admin' %}
+                        <div class="modal-backdrop" id="editVetModal{{ v.vet_id }}">
+                            <div class="modal-dialog">
+                                <div class="modal-header">
+                                    <h3>Edit Veterinarian Profile</h3>
+                                    <button type="button" class="modal-close">&times;</button>
+                                </div>
+                                <form action="{{ url_for('edit_veterinarian', vet_id=v.vet_id) }}" method="POST">
+                                    <div class="modal-body">
+                                        <div class="form-group">
+                                            <label>Doctor Full Name *</label>
+                                            <input type="text" name="name" class="form-control" value="{{ v.name }}" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Clinical Specialization *</label>
+                                            <input type="text" name="specialization" class="form-control" value="{{ v.specialization }}" required>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Phone Number *</label>
+                                                <input type="tel" name="phone" class="form-control" value="{{ v.phone }}" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Email Address *</label>
+                                                <input type="email" name="email" class="form-control" value="{{ v.email }}" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Update Profile</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: #64748b; padding: 28px;">
+                                No veterinarians found.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Veterinarian Modal (Admin Only) -->
+{% if current_user.role == 'Admin' %}
+<div class="modal-backdrop" id="addVetModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3>Add New Veterinarian</h3>
+            <button type="button" class="modal-close">&times;</button>
+        </div>
+        <form action="{{ url_for('add_veterinarian') }}" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Doctor Full Name *</label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. Dr. Robert Smith" required>
+                </div>
+                <div class="form-group">
+                    <label>Clinical Specialization *</label>
+                    <input type="text" name="specialization" class="form-control" placeholder="e.g. Canine Internal Medicine" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Phone Number *</label>
+                        <input type="tel" name="phone" class="form-control" placeholder="e.g. 9123456780" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address *</label>
+                        <input type="email" name="email" class="form-control" placeholder="e.g. dr.smith@petcareplus.com" required>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Doctor Profile</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

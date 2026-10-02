@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Prescriptions — PetCare+{% endblock %}
+{% block page_title %}Pharmacy & Prescriptions{% endblock %}
+
+{% block header_actions %}
+{% if current_user.role in ['Admin', 'Veterinarian'] %}
+<button type="button" class="btn btn-primary btn-sm" data-modal-open="addPrescriptionModal">
+    + Add Prescription
+</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>💊 Active & Past Prescriptions</h3>
+        <span style="font-size: 0.85rem; color: #64748b;">Total Prescribed Items: <strong>{{ prescriptions|length }}</strong></span>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Medicine Name</th>
+                        <th>Dosage</th>
+                        <th>Frequency</th>
+                        <th>Duration</th>
+                        <th>Pet & Owner</th>
+                        <th>Diagnosis Linked</th>
+                        <th>Instructions</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if prescriptions %}
+                        {% for pr in prescriptions %}
+                        <tr>
+                            <td>#{{ pr.prescription_id }}</td>
+                            <td><strong style="color: #0d9488;">{{ pr.medicine_name }}</strong></td>
+                            <td>{{ pr.dosage }}</td>
+                            <td>{{ pr.frequency }}</td>
+                            <td><span class="badge" style="background:#e0f2fe; color:#0369a1;">{{ pr.duration }}</span></td>
+                            <td>
+                                <strong>{{ pr.pet_name }}</strong> ({{ pr.species }})<br>
+                                <small style="color: #64748b;">Owner: {{ pr.owner_name }}</small>
+                            </td>
+                            <td>
+                                <small style="color: #475569;">{{ pr.diagnosis }}<br>({{ pr.treatment_date }})</small>
+                            </td>
+                            <td>{{ pr.instructions or 'Take as directed' }}</td>
+                            <td>
+                                {% if current_user.role in ['Admin', 'Veterinarian'] %}
+                                <form action="{{ url_for('delete_prescription', prescription_id=pr.prescription_id) }}" method="POST" onsubmit="return confirmDelete('Delete this prescription medication?');" style="display:inline;">
+                                    <button type="submit" class="btn btn-danger btn-sm">
+                                        Delete
+                                    </button>
+                                </form>
+                                {% else %}
+                                <span style="color: #94a3b8; font-size: 0.78rem;">Dispensed</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="9" style="text-align: center; color: #64748b; padding: 28px;">
+                                No prescriptions recorded yet.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Prescription Modal -->
+{% if current_user.role in ['Admin', 'Veterinarian'] %}
+<div class="modal-backdrop" id="addPrescriptionModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3>Add Prescription Medication</h3>
+            <button type="button" class="modal-close">&times;</button>
+        </div>
+        <form action="{{ url_for('add_prescription') }}" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Link to Medical Treatment Record *</label>
+                    <select name="treatment_id" class="form-control" required>
+                        <option value="">-- Select Treatment / Diagnosis --</option>
+                        {% for t in treatments %}
+                            <option value="{{ t.treatment_id }}">
+                                #{{ t.treatment_id }}: {{ t.pet_name }} — {{ t.diagnosis }} ({{ t.treatment_date }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Medicine Name *</label>
+                        <input type="text" name="medicine_name" class="form-control" placeholder="e.g. Amoxicillin, Carprofen" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Dosage *</label>
+                        <input type="text" name="dosage" class="form-control" placeholder="e.g. 250mg, 5ml, 1 tablet" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Frequency *</label>
+                        <input type="text" name="frequency" class="form-control" placeholder="e.g. Twice daily, Every 8 hours" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Duration *</label>
+                        <input type="text" name="duration" class="form-control" placeholder="e.g. 7 days, 14 days" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Special Administration Instructions</label>
+                    <textarea name="instructions" class="form-control" rows="2" placeholder="e.g. Give with food. Complete full antibiotic course."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Prescription</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Treatments & Medical Records — PetCare+{% endblock %}
+{% block page_title %}Clinical Treatments & Diagnoses{% endblock %}
+
+{% block header_actions %}
+{% if current_user.role in ['Admin', 'Veterinarian'] %}
+<button type="button" class="btn btn-primary btn-sm" data-modal-open="addTreatmentModal">
+    + Record Treatment
+</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>📋 Clinical Treatment History</h3>
+        <span style="font-size: 0.85rem; color: #64748b;">Total Records: <strong>{{ treatments|length }}</strong></span>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Treatment Date</th>
+                        <th>Pet & Owner</th>
+                        <th>Attending Doctor</th>
+                        <th>Clinical Diagnosis</th>
+                        <th>Treatment Administered</th>
+                        <th>Prescriptions</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if treatments %}
+                        {% for t in treatments %}
+                        <tr>
+                            <td>#{{ t.treatment_id }}</td>
+                            <td><strong>{{ t.treatment_date }}</strong></td>
+                            <td>
+                                <a href="{{ url_for('pet_detail', pet_id=t.pet_id) }}" style="color: var(--primary); text-decoration: none; font-weight: 600;">
+                                    🐾 {{ t.pet_name }}
+                                </a>
+                                <br><small style="color: #64748b;">Owner: {{ t.owner_name }}</small>
+                            </td>
+                            <td>{{ t.vet_name }}</td>
+                            <td>
+                                <strong style="color: #0f766e;">{{ t.diagnosis }}</strong>
+                            </td>
+                            <td>{{ t.treatment_description }}</td>
+                            <td>
+                                <a href="{{ url_for('prescriptions') }}" class="badge badge-current" style="text-decoration: none;">
+                                    💊 {{ t.prescription_count }} Meds
+                                </a>
+                            </td>
+                            <td>{{ t.notes or '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: #64748b; padding: 28px;">
+                                No treatment records logged yet.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Record Treatment Modal -->
+{% if current_user.role in ['Admin', 'Veterinarian'] %}
+<div class="modal-backdrop" id="addTreatmentModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3>Record Clinical Treatment</h3>
+            <button type="button" class="modal-close">&times;</button>
+        </div>
+        <form action="{{ url_for('add_treatment') }}" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Select Appointment Visit *</label>
+                    <select name="appointment_id" class="form-control" required>
+                        <option value="">-- Choose Appointment --</option>
+                        {% for a in eligible_appointments %}
+                            <option value="{{ a.appointment_id }}">
+                                #{{ a.appointment_id }}: {{ a.pet_name }} ({{ a.appointment_date }}) — {{ a.reason }} [Dr. {{ a.vet_name }}]
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Clinical Diagnosis *</label>
+                    <input type="text" name="diagnosis" class="form-control" placeholder="e.g. Acute Otitis Externa, Canine Parvovirus" required>
+                </div>
+                <div class="form-group">
+                    <label>Treatment Administered *</label>
+                    <textarea name="treatment_description" class="form-control" rows="3" placeholder="Describe clinical procedures, injections, cleaning, etc." required></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Treatment Date *</label>
+                        <input type="date" name="treatment_date" class="form-control" value="{{ today_date }}" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Veterinarian's Additional Notes & Advice</label>
+                    <textarea name="notes" class="form-control" rows="2" placeholder="Rest recommendations, dietary changes, follow-up instructions"></textarea>
+                </div>
+                <p style="font-size: 0.74rem; color: #64748b;">
+                    ⚡ <em>ACID Transaction: Submitting this form automatically updates appointment status to 'Completed' and generates the baseline invoice.</em>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Medical Record</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

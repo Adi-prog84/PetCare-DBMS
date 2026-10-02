@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Dossier: {{ pet.pet_name }} — PetCare+{% endblock %}
+{% block page_title %}Pet Medical Dossier{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('pets') }}" class="btn btn-secondary btn-sm">
+    &larr; Back to Pet Directory
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Dossier Header Card -->
+<div class="dossier-header">
+    <div class="dossier-pet">
+        <div class="pet-avatar">
+            {% if pet.species|lower == 'dog' %}🐶
+            {% elif pet.species|lower == 'cat' %}🐱
+            {% elif pet.species|lower == 'bird' %}🦜
+            {% elif pet.species|lower == 'rabbit' %}🐰
+            {% else %}🐾
+            {% endif %}
+        </div>
+        <div>
+            <h2 style="font-size: 1.45rem; color: #0f172a; margin-bottom: 4px;">{{ pet.pet_name }}</h2>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <span class="badge badge-current">{{ pet.species }}</span>
+                <span class="badge" style="background:#e2e8f0; color:#334155;">{{ pet.breed }}</span>
+                <span class="badge" style="background:#e2e8f0; color:#334155;">{{ pet.gender }}</span>
+                <span class="badge" style="background:#e2e8f0; color:#334155;">{{ pet.weight ~ ' kg' if pet.weight else 'Weight: N/A' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Owner Contact Details -->
+    <div style="text-align: right;">
+        <span style="font-size: 0.76rem; color: #64748b; text-transform: uppercase; font-weight: 600;">Owner Information</span>
+        <div style="font-size: 1.05rem; font-weight: 600; color: #0f172a;">{{ pet.owner_name }}</div>
+        <div style="font-size: 0.85rem; color: #475569;">📞 {{ pet.owner_phone }} | ✉️ {{ pet.owner_email }}</div>
+        <div style="font-size: 0.8rem; color: #64748b;">📍 {{ pet.owner_address }}</div>
+    </div>
+</div>
+
+<!-- Medical History Sections -->
+<div class="report-section">
+    <!-- 1. Treatment and Diagnosis History -->
+    <div class="card">
+        <div class="card-header">
+            <h3>🩺 Medical Diagnoses & Treatment Records ({{ treatments|length }})</h3>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Treatment Date</th>
+                            <th>Attending Doctor</th>
+                            <th>Clinical Diagnosis</th>
+                            <th>Treatment Description</th>
+                            <th>Doctor's Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if treatments %}
+                            {% for t in treatments %}
+                            <tr>
+                                <td><strong>{{ t.treatment_date }}</strong></td>
+                                <td>{{ t.vet_name }}</td>
+                                <td><strong style="color: #0f766e;">{{ t.diagnosis }}</strong></td>
+                                <td>{{ t.treatment_description }}</td>
+                                <td>{{ t.notes or 'None' }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: #64748b; padding: 20px;">
+                                    No recorded treatments found for this pet.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Vaccination Record -->
+    <div class="card">
+        <div class="card-header">
+            <h3>💉 Vaccination Tracking & History ({{ vaccinations|length }})</h3>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Vaccine Name</th>
+                            <th>Date Administered</th>
+                            <th>Next Due Date</th>
+                            <th>Status</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if vaccinations %}
+                            {% for v in vaccinations %}
+                            <tr>
+                                <td><strong>{{ v.vaccine_name }}</strong></td>
+                                <td>{{ v.vaccination_date }}</td>
+                                <td>{{ v.next_due_date or 'No next date recorded' }}</td>
+                                <td>
+                                    {% if v.days_until_due is not none %}
+                                        {% if v.days_until_due < 0 %}
+                                            <span class="badge badge-overdue">Overdue</span>
+                                        {% elif v.days_until_due <= 30 %}
+                                            <span class="badge badge-upcoming">Due Soon</span>
+                                        {% else %}
+                                            <span class="badge badge-completed">Up to Date</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge" style="background:#e2e8f0; color:#334155;">Recorded</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ v.notes or 'None' }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: #64748b; padding: 20px;">
+                                    No vaccinations on file for this pet.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Complete Appointment History -->
+    <div class="card">
+        <div class="card-header">
+            <h3>📅 Visit & Appointment History ({{ appointments|length }})</h3>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Appt ID</th>
+                            <th>Date & Time</th>
+                            <th>Doctor</th>
+                            <th>Visit Reason</th>
+                            <th>Status</th>
+                            <th>Invoice Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if appointments %}
+                            {% for a in appointments %}
+                            <tr>
+                                <td>#{{ a.appointment_id }}</td>
+                                <td><strong>{{ a.appointment_date }}</strong> at {{ a.appointment_time }}</td>
+                                <td>{{ a.vet_name }} <small>({{ a.specialization }})</small></td>
+                                <td>{{ a.reason }}</td>
+                                <td><span class="badge badge-{{ a.status|lower }}">{{ a.status }}</span></td>
+                                <td>
+                                    {% if a.bill_id %}
+                                        <span class="badge badge-{{ a.payment_status|lower }}">
+                                            ₹{{ "%.2f"|format(a.total_amount) }} ({{ a.payment_status }})
+                                        </span>
+                                    {% else %}
+                                        <span style="color: #94a3b8; font-size: 0.78rem;">Unbilled</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: #64748b; padding: 20px;">
+                                    No appointments scheduled or recorded.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
